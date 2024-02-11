@@ -1,0 +1,101 @@
+// This file is part of www.nand2tetris.org
+// and the book "The Elements of Computing Systems"
+// by Nisan and Schocken, MIT Press.
+// File name: projects/05/CPU.hdl
+
+/**
+ * The Hack CPU (Central Processing unit), consisting of an ALU,
+ * two registers named A and D, and a program counter named PC.
+ * The CPU is designed to fetch and execute instructions written in 
+ * the Hack machine language. In particular, functions as follows:
+ * Executes the inputted instruction according to the Hack machine 
+ * language specification. The D and A in the language specification
+ * refer to CPU-resident registers, while M refers to the external
+ * memory location addressed by A, i.e. to Memory[A]. The inM input 
+ * holds the value of this location. If the current instruction needs 
+ * to write a value to M, the value is placed in outM, the address 
+ * of the target location is placed in the addressM output, and the 
+ * writeM control bit is asserted. (When writeM==0, any value may 
+ * appear in outM). The outM and writeM outputs are combinational: 
+ * they are affected instantaneously by the execution of the current 
+ * instruction. The addressM and pc outputs are clocked: although they 
+ * are affected by the execution of the current instruction, they commit 
+ * to their new values only in the next time step. If reset==1 then the 
+ * CPU jumps to address 0 (i.e. pc is set to 0 in next time step) rather 
+ * than to the address resulting from executing the current instruction. 
+ */
+
+CHIP CPU {
+
+    IN  inM[16],         // M value input  (M = contents of RAM[A])
+        instruction[16], // Instruction for execution
+        reset;           // Signals whether to re-start the current
+                         // program (reset==1) or continue executing
+                         // the current program (reset==0).
+
+    OUT outM[16],        // M value output
+        writeM,          // Write to M? 
+        addressM[15],    // Address in data memory (of M)
+        pc[15];          // address of next instruction
+
+    PARTS:
+    // Put your code here
+    Mux16(a=instruction, b=ALUoutput, sel=instruction[15], out=ALUorInstruction);
+    
+    Not(in=instruction[15], out=Ninst15);
+    Or(a=Ninst15, b=instruction[5], out=loadARegister);
+    ARegister(in=ALUorInstruction,load=loadARegister, out=Aregister, out[0..14]=addressM);
+    
+    And(a=instruction[15], b=instruction[12], out=selAMRegister);
+    Mux16(a=Aregister, b=inM, sel=selAMRegister, out=AMregister);
+    
+    And(a=instruction[15], b=instruction[4], out=loadDRegister);
+    DRegister(in=ALUoutput,load=loadDRegister, out=Dregister);
+    
+    ALU(x=Dregister, y=AMregister, zx=instruction[11] ,nx=instruction[10],
+        zy=instruction[9] ,ny=instruction[8], f=instruction[7], no=instruction[6],
+        out=ALUoutput, out=outM, zr=zero, ng=negative);
+    
+    And(a=instruction[15], b=instruction[3], out=writeM);
+    
+    And(a=instruction[15], b=instruction[0], out=bitJump0);
+    And(a=instruction[15], b=instruction[1], out=bitJump1);
+    And(a=instruction[15], b=instruction[2], out=bitJump2);
+    
+    DMux8Way(in=true,sel[0]=bitJump0, sel[1]=bitJump1, sel[2]=bitJump2,
+        a=increment, b=JGT, c=JEQ, d=JGE, e=JLT, f=JNE, g=JLE, h=JMP);
+
+    Not(in=zero, out=notzero);
+    Not(in=negative, out=notnegative);
+    
+    And(a=JGT, b=notzero,   out=JGTnotZero);
+    And(a=JGTnotZero, b=notnegative, out=JGTout);
+    
+    And(a=JEQ, b=zero,      out=JEQout);
+    And(a=JLT, b=negative,  out=JLTout);
+    
+    And(a=JNE, b=notzero,   out=JNEout);
+
+    Or(a=negative, b=zero, out=ZeroAndNegative);
+    Or(a=notnegative, b=zero, out=ZeroAndPositive);
+    
+    And(a=JLE, b=instruction[1], out=jumpZeroOrNegative);
+    And(a=jumpZeroOrNegative, b=ZeroAndNegative, out=JLEout);
+    
+    And(a=JGE, b=instruction[1], out=jumpZeroOrPositive);
+    And(a=jumpZeroOrPositive, b=ZeroAndPositive, out=JGEout);
+
+    And(a=jumpZeroOrNegative, b=jumpZeroOrPositive, out=JMPout);
+    Not(in=JMP, out=incrementPC);
+
+    Or(a=JGTout, b=JEQout, out=combineJumpBits1);
+    Or(a=JNEout, b=combineJumpBits1, out=combineJumpBits2);
+    Or(a=JLTout, b=combineJumpBits2, out=combineJumpBits3);
+    Or(a=JLEout, b=combineJumpBits3, out=combineJumpBits4);
+    Or(a=JGEout, b=combineJumpBits4, out=combineJumpBits5);
+    Or(a=JMP, b=combineJumpBits5, out=loadJumpBits);        
+        
+
+    PC(in=Aregister, load=loadJumpBits, inc=true, reset=reset ,out[0..14]=pc);
+
+}
