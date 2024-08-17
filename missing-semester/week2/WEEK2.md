@@ -14,8 +14,9 @@ ls -lhat --color=auto
 ./marco.sh stores in a variable the present working directory.
 ./polo.sh reads the variable and changes directory to that directory
 
+'''
 See marco.sh and polo.sh
-
+'''
 
 - Say you have a command that fails rarely. In order to debug it you need to capture its output but it can be time consuming to get a failure run. Write a bash script that runs the following script until it fails and captures its standard output and error streams to files and prints everything at the end. Bonus points if you can also report how many runs it took for the script to fail.
 
@@ -23,8 +24,9 @@ See marco.sh and polo.sh
 Do a while loop to check the status code of the ./some_fun
 If the status code does not equal to 1, increment the call counter and call ./some_fun.
 Otherwise print the call counter variable.
-
+'''
 See ./debug_script.sh and ./some_script.sh
+'''
 
 - As we covered in the lecture find’s -exec can be very powerful for performing operations over the files we are searching for. However, what if we want to do something with all the files, like creating a zip file? As you have seen so far commands will take input from both arguments and STDIN. When piping commands, we are connecting STDOUT to STDIN, but some commands like tar take inputs from arguments. To bridge this disconnect there’s the xargs command which will execute a command using STDIN as arguments. For example ls | xargs rm will delete the files in the current directory.
 
